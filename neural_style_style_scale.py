@@ -78,7 +78,7 @@ def main():
     style_images_caffe = []
     for image in style_image_list:
         image_path = image
-        print("Processing style image: "image_path)
+        print("Processing style image: " + image_path)
         im_sizing = Image.open(image_path)
         print(im_sizing)
         Sh = im_sizing.size[0] #this one is the way I expect it to be, but the Ch is not
