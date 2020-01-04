@@ -67,6 +67,8 @@ def main():
     Ch = content_image.size(2) #literally no idea why its (2) and not [0]
     Cw = content_image.size(3) #literally no idea why its (3) and not [1]
     #################################################################
+
+    print("Original content image size (wxh) " + str(Cw) + "x" + str(Ch))
     
     style_image_input = params.style_image.split(',')
     style_image_list, ext = [], [".jpg", ".jpeg", ".png", ".tiff"]
@@ -84,8 +86,8 @@ def main():
         print(image_path)
         im_sizing = Image.open(image_path)
         print(im_sizing)
-        Sh = im_sizing.size[0] #this one is the way I expect it to be, but the Ch is not
-        Sw = im_sizing.size[1] #this one is the way I expect it to be, but the Ch is not
+        Sw = im_sizing.size[0] #this one is the way I expect it to be, but the Ch is not
+        Sh = im_sizing.size[1] #this one is the way I expect it to be, but the Ch is not
 
         print("Original style image size (wxh) " + str(Sw) + "x" + str(Sh))
 
@@ -134,8 +136,8 @@ def main():
         
         img_caffe = preprocess(image, style_size).type(dtype)
 
-        icsh = img_caffe.size(3)
-        icsw = img_caffe.size(2)
+        icsw = img_caffe.size(3)
+        icsh = img_caffe.size(2)
 
         print("Resized  style image size wxh" + str(icsw) + "x" + str(icsh))
 

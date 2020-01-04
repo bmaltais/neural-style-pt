@@ -1,5 +1,6 @@
 import os
 import copy
+import math
 import torch
 import torch.nn as nn
 import torch.optim as optim
@@ -59,11 +60,19 @@ def main():
 
     cnn, layerList = loadCaffemodel(params.model_file, params.pooling, params.gpu, params.disable_check)
 
+    im_sizing = Image.open(params.content_image)
+
+    # print(im_sizing)
+    print("\nOriginal content image size (wxh) " + str(im_sizing.size[0]) + "x" + str(im_sizing.size[1]))
+
     content_image = preprocess(params.content_image, params.image_size).type(dtype)
 
     #####################################################
-    Ch = content_image.size(2) #literally no idea why its (2) and not [0]
     Cw = content_image.size(3) #literally no idea why its (3) and not [1]
+    Ch = content_image.size(2) #literally no idea why its (2) and not [0]
+    print("Resized content image size (wxh) " + str(Cw) + "x" + str(Ch))
+
+    Chyp = math.sqrt((Cw * Cw) + (Ch * Ch))
     #####################################################
 
     style_image_input = params.style_image.split(',')
@@ -77,38 +86,33 @@ def main():
             style_image_list.append(image)
     style_images_caffe = []
     for image in style_image_list:
-        image_path = image
-        print("Processing style image: " + image_path)
-        im_sizing = Image.open(image_path)
-        print(im_sizing)
-        Sh = im_sizing.size[0] #this one is the way I expect it to be, but the Ch is not
-        Sw = im_sizing.size[1] #this one is the way I expect it to be, but the Ch is not
+        #image_path = image
+        print("\nProcessing style image: " + image)
+        im_sizing = Image.open(image)
+        # print(im_sizing)
+        Sw = im_sizing.size[0] #this one is the way I expect it to be, but the Ch is not
+        Sh = im_sizing.size[1] #this one is the way I expect it to be, but the Ch is not
 
         print("Original style image size (wxh) " + str(Sw) + "x" + str(Sh))
 
-        Cr = Cw / Ch
-        Sr = Sw / Sh
-
-        if Cr <= Sr:
-            print("Content ratio <= Style ratio")
-            style_size = Ch * Sr * params.style_scale
+        if Sh >= Sw:
+            # Calculate height based on content image hypotenuse resolution
+            style_size = Chyp * Sh / math.sqrt(pow(Sw, 2) + pow(Sh, 2)) * params.style_scale
+            if style_size > Sh:
+                style_size = Sh
+                print("- Style size is too small, keeping to original style max size. Reduce output size to maintain desired style size.") 
+        else:
+            style_size = Chyp * Sw / math.sqrt(pow(Sw, 2) + pow(Sh, 2)) * params.style_scale
             if style_size > Sw:
                 style_size = Sw
-                print("Style size is too small, keeping to original style max size.")
-
-        if Cr > Sr:
-            print("Content ratio > Style ratio")
-            style_size = Cw / Sr * params.style_scale
-            if style_size > Sw:
-                style_size = Sh
-                print("Style size is too small, keeping to original style max size.")
+                print("- Style size is too small, keeping to original style max size. Reduce output size to maintain desired style size.") 
 
         img_caffe = preprocess(image, style_size).type(dtype)
+        
+        icsw = img_caffe.size(3)
+        icsh = img_caffe.size(2)
 
-        icsh = img_caffe.size(3)
-        icsw = img_caffe.size(2)
-
-        print("Resized style image size wxh" + str(icsw) + "x" + str(icsh))
+        print("Resized style image size to match hypotenuse of content (wxh) " + str(icsw) + "x" + str(icsh))
 
         style_images_caffe.append(img_caffe)
 
