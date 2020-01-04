@@ -78,7 +78,7 @@ def main():
     style_images_caffe = []
     for image in style_image_list:
         image_path = image
-        print(image_path)
+        print("Processing style image: "image_path)
         im_sizing = Image.open(image_path)
         print(im_sizing)
         Sh = im_sizing.size[0] #this one is the way I expect it to be, but the Ch is not
@@ -90,12 +90,14 @@ def main():
         Sr = Sw / Sh
 
         if Cr <= Sr:
+            print("Content ratio <= Style ratio")
             style_size = Ch * Sr * params.style_scale
             if style_size > Sw:
                 style_size = Sw
                 print("Style size is too small, keeping to original style max size.")
 
         if Cr > Sr:
+            print("Content ratio > Style ratio")
             style_size = Cw / Sr * params.style_scale
             if style_size > Sw:
                 style_size = Sh
