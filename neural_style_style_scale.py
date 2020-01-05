@@ -22,6 +22,7 @@ parser.add_argument("-gpu", help="Zero-indexed ID of the GPU to use; for CPU mod
 parser.add_argument("-content_weight", type=float, default=5e0)
 parser.add_argument("-style_weight", type=float, default=1e2)
 parser.add_argument("-normalize_weights", action='store_true')
+parser.add_argument("-hypotenuse_style_size", action='store_true')
 parser.add_argument("-tv_weight", type=float, default=1e-3)
 parser.add_argument("-num_iterations", type=int, default=1000)
 parser.add_argument("-init", choices=['random', 'image'], default='random')
@@ -60,20 +61,16 @@ def main():
 
     cnn, layerList = loadCaffemodel(params.model_file, params.pooling, params.gpu, params.disable_check)
 
-    im_sizing = Image.open(params.content_image)
-
-    # print(im_sizing)
-    print("\nOriginal content image size (wxh) " + str(im_sizing.size[0]) + "x" + str(im_sizing.size[1]))
+    if params.hypotenuse_style_size:
+        im_sizing = Image.open(params.content_image)
+        print("\nOriginal content image size (wxh) " + str(im_sizing.size[0]) + "x" + str(im_sizing.size[1]))
 
     content_image = preprocess(params.content_image, params.image_size).type(dtype)
 
-    #####################################################
-    Cw = content_image.size(3) #literally no idea why its (3) and not [1]
-    Ch = content_image.size(2) #literally no idea why its (2) and not [0]
-    print("Resized content image size (wxh) " + str(Cw) + "x" + str(Ch))
-
+    Cw = content_image.size(3)
+    Ch = content_image.size(2)
     Chyp = math.sqrt((Cw * Cw) + (Ch * Ch))
-    #####################################################
+    print("Resized content image size (wxh) " + str(Cw) + "x" + str(Ch))
 
     style_image_input = params.style_image.split(',')
     style_image_list, ext = [], [".jpg", ".jpeg", ".png", ".tiff"]
@@ -86,34 +83,38 @@ def main():
             style_image_list.append(image)
     style_images_caffe = []
     for image in style_image_list:
-        #image_path = image
-        print("\nProcessing style image: " + image)
-        im_sizing = Image.open(image)
-        # print(im_sizing)
-        Sw = im_sizing.size[0] #this one is the way I expect it to be, but the Ch is not
-        Sh = im_sizing.size[1] #this one is the way I expect it to be, but the Ch is not
+        if params.hypotenuse_style_size:
+            print("\nProcessing style image: " + image)
+            im_sizing = Image.open(image)
+            
+            Sw = im_sizing.size[0] #this one is the way I expect it to be, but the Ch is not
+            Sh = im_sizing.size[1] #this one is the way I expect it to be, but the Ch is not
 
-        print("Original style image size (wxh) " + str(Sw) + "x" + str(Sh))
+            print("Original style image size (wxh) " + str(Sw) + "x" + str(Sh))
 
-        if Sh >= Sw:
-            # Calculate height based on content image hypotenuse resolution
-            style_size = Chyp * Sh / math.sqrt(pow(Sw, 2) + pow(Sh, 2)) * params.style_scale
-            if style_size > Sh:
-                style_size = Sh
-                print("- Style size is too small, keeping to original style max size. Reduce output size to maintain desired style size.") 
+            print("Resizing style using content hypotenuse method")
+            
+            if Sh >= Sw:
+                # Calculate height based on content image hypotenuse resolution
+                style_size = Chyp * Sh / math.sqrt(pow(Sw, 2) + pow(Sh, 2)) * params.style_scale
+                if style_size > Sh:
+                    style_size = Sh
+                    print("- Style size is too small, keeping to original style max size. Reduce output size to maintain desired style size.") 
+            else:
+                style_size = Chyp * Sw / math.sqrt(pow(Sw, 2) + pow(Sh, 2)) * params.style_scale
+                if style_size > Sw:
+                    style_size = Sw
+                    print("- Style size is too small, keeping to original style max size. Reduce output size to maintain desired style size.") 
         else:
-            style_size = Chyp * Sw / math.sqrt(pow(Sw, 2) + pow(Sh, 2)) * params.style_scale
-            if style_size > Sw:
-                style_size = Sw
-                print("- Style size is too small, keeping to original style max size. Reduce output size to maintain desired style size.") 
-
-        img_caffe = preprocess(image, style_size).type(dtype)
+            print("Resizing style using requested image size method")
+            style_size = int(params.image_size * params.style_scale)
         
+        img_caffe = preprocess(image, style_size).type(dtype)
+            
         icsw = img_caffe.size(3)
         icsh = img_caffe.size(2)
 
-        print("Resized style image size to match hypotenuse of content (wxh) " + str(icsw) + "x" + str(icsh))
-
+        print("Resized style image size (wxh) " + str(icsw) + "x" + str(icsh))
         style_images_caffe.append(img_caffe)
 
     if params.init_image != None:
