@@ -87,26 +87,19 @@ def main():
             print("\nProcessing style image: " + image)
             im_sizing = Image.open(image)
             
-            Sw = im_sizing.size[0] #this one is the way I expect it to be, but the Ch is not
-            Sh = im_sizing.size[1] #this one is the way I expect it to be, but the Ch is not
+            Sw = im_sizing.size[0]
+            Sh = im_sizing.size[1]
+            Smax = max(Sw, Sh)
 
             print("Original style image size (wxh) " + str(Sw) + "x" + str(Sh))
+            print("Resizing style image using content hypotenuse method")
 
-            print("Resizing style using content hypotenuse method")
-            
-            if Sh >= Sw:
-                # Calculate height based on content image hypotenuse resolution
-                style_size = Chyp * Sh / math.sqrt(pow(Sw, 2) + pow(Sh, 2)) * params.style_scale
-                if style_size > Sh:
-                    style_size = Sh
-                    print("- Style size is too small, keeping to original style max size. Reduce output size to maintain desired style size.") 
-            else:
-                style_size = Chyp * Sw / math.sqrt(pow(Sw, 2) + pow(Sh, 2)) * params.style_scale
-                if style_size > Sw:
-                    style_size = Sw
-                    print("- Style size is too small, keeping to original style max size. Reduce output size to maintain desired style size.") 
+            # Calculate height based on content image hypotenuse resolution
+            style_size = Chyp * Smax / math.sqrt(pow(Sw, 2) + pow(Sh, 2)) * params.style_scale
+            if style_size > Smax:
+                style_size = Smax
+                print("Style size is too small, keeping original style max size to prevent upscaling artifacts. Reduce the output image_size or use a larger style size image.")
         else:
-            print("Resizing style using requested image size method")
             style_size = int(params.image_size * params.style_scale)
         
         img_caffe = preprocess(image, style_size).type(dtype)
